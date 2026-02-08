@@ -6,6 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 # Data & outputs (not committed)
 data/raw/*.csv
@@ -14,3 +15,12 @@ data/raw/*.gz
 artifacts/*.joblib
 artifacts/*.json
 artifacts/*.csv
+
+# OS / editors
+.env
+.env.*
+.pytest_cache/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

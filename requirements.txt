@@ -6,3 +6,4 @@ scikit-learn
 imbalanced-learn
 xgboost
 joblib
+ipython
