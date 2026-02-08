@@ -1,71 +1,84 @@
-# 💳 Credit Card Fraud Detection — A Pipeline Journey
+# 💳 Credit Card Fraud Detection — Cost-Aware Pipeline
 
-> **TL;DR:** A practical, cost-aware pipeline for fraud detection with **time-aware split**, **probability calibration**, and **business-aligned thresholds**.
+A practical fraud detection workflow with time-aware evaluation, probability calibration, and explicit threshold policies
+for controlling false positives vs false negatives.
 
----
-
-## 📖 The Story  
-Less than **0.2% of transactions are fraudulent** — yet they cost banks **billions of dollars globally every year**.  
-Detecting fraud is like finding a **needle in a haystack**: only **492 frauds out of 284,807 transactions** in this dataset.
-
-This project builds a pipeline that **learns from time-based patterns and hidden signals** to flag fraud in real-world credit card payments.  
-Think of it as a **first line of defense** for banks, where every decision threshold is a trade-off:  
-- catching more fraudsters ✅  
-- vs. minimizing false alarms ❌ that annoy customers.
+Case study: `CASE_STUDY.md`
 
 ---
 
-## 🛠️ The Approach
-- **Dataset:** 284,807 transactions with severe imbalance (~0.17% fraud).  
-- **Methodology:**  
-  - **EDA:** amount distributions & temporal patterns (hours, day-parts).  
-  - **Feature Engineering:** `Hour`, `Night_transaction`, `Business_hours`, `log(Amount)`.  
-  - **Models:** Logistic, Random Forest, XGBoost, plus **Isotonic Calibration** via **TimeSeriesSplit**.  
-  - **Decision Tuning:** either **Precision ≥90%** (customer experience) or **Min-Cost** (loss vs. investigation).  
-- **Key Metrics:** **AUPRC (AP)** as the main yardstick; plus **ROC-AUC**, **Brier**, **ECE**, and **Cost-based thresholds**.  
+## What this repository includes
+- Notebook: `Credit-Card-Fraud-Detection-A-Pipeline-Journey.ipynb`
+- Exported artifacts under `./artifacts/` (models + thresholds + run metadata)
+- Scoring script: `scripts/score_csv.py` (optional)
 
 ---
 
-## 📊 Key Results (Held-out Test Window)
+## Dataset
+Source: Kaggle “Credit Card Fraud Detection” dataset (`creditcard.csv`).
 
-| Model   | AP(Test) | AP 95% CI       | ROC-AUC(Test) | Brier(Test) | ECE(15) | Thr@P90(val) | Thr@MinCost(val) | Cost@Test@P90 | Cost@Test@MinCost |
-|---------|----------|-----------------|---------------|-------------|---------|---------------|------------------|---------------|-------------------|
-| RF-Cal  | 0.7894   | [0.700, 0.867]  | 0.9549        | 0.0005      | 0.0003  | 0.6356        | 0.065            | 4030.0        | 3220.0            |
-| XGB-Cal | 0.7775   | [0.695, 0.868]  | 0.9768        | 0.0006      | 0.0008  | 0.7718        | 0.169            | 5020.0        | 3190.0            |
+Expected columns:
+- `Time`, `V1`…`V28`, `Amount`, `Class` (0 = normal, 1 = fraud)
 
-➡️ **Calibrated XGBoost** achieved the highest ROC-AUC and strong calibration.  
-➡️ **Calibrated Random Forest** had slightly higher AP and lower realized cost at Min-Cost threshold.  
+### Local (recommended)
+1) Download the dataset CSV.
+2) Place it at:
+`data/raw/creditcard.csv`
 
----
-
-## 🏦 Business Lens
-Operating points are evaluated under illustrative costs:  
-- **False Negative (FN):** $200 (average fraud loss).  
-- **False Positive (FP):** $5 (investigation/alert cost).  
-
-👉 Try sensitivity analysis with your own FN/FP costs — even small tweaks can flip which threshold, or even which model, is preferred.  
+### Kaggle
+The notebook also supports the common Kaggle input path:
+`/kaggle/input/creditcardfraud/creditcard.csv`
 
 ---
 
-## 📦 Reproducibility
-- **Split:** strict **time-based split** (no leakage).  
-- **Calibration:** Isotonic regression using **TimeSeriesSplit(cv=3)**.  
-- **Thresholds:** always chosen on **validation**, reported only on **test**.  
-- **Random seed:** 42 fixed for reproducibility.  
+## Getting started
+
+### 1) Install
+```bash
+python -m venv .venv
+# Windows: .\.venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+### 2) Run the notebook
+Open and run:
+- `Credit-Card-Fraud-Detection-A-Pipeline-Journey.ipynb`
+
+The notebook will:
+- train baseline + stronger models
+- calibrate probabilities
+- select threshold policies
+- export artifacts to `./artifacts/`
 
 ---
 
-
-## 📌 Insights
-- Accuracy ≈ useless under 0.17% fraud prevalence.  
-- Calibrated probabilities → thresholds that **actually mean something**.  
-- Cost-sensitive analysis bridges the gap between **model metrics** and **business decisions**.  
-- Fraud is not random — it clusters in time and amount ranges.  
+## Artifacts
+Artifacts are written to `./artifacts/` (models, thresholds, and run metadata).
+See `artifacts/README.md` for the expected files produced by the notebook.
 
 ---
 
-## 📚 References
-- Dataset: [Credit Card Fraud Detection — Kaggle](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud)  
-- Calibration: Zadrozny & Elkan, *Transforming Classifier Scores into Accurate Multiclass Probability Estimates* (2002).  
+## Score a CSV (optional)
+After exporting artifacts, you can score any CSV with the same feature columns:
 
+```bash
+python scripts/score_csv.py --csv data/raw/creditcard.csv --out artifacts/scored.csv --model xgb --policy min_cost
+```
 
+The output adds:
+- `fraud_proba`
+- `fraud_pred` (0/1)
+
+---
+
+## Methodology notes
+- Leak-safe evaluation via time-based train/test windows.
+- Calibration produces probabilities suitable for threshold policies.
+- Threshold policies define operating points (e.g., min expected cost).
+
+---
+
+## License
+MIT (code). Dataset licensing depends on the dataset source where you download it.

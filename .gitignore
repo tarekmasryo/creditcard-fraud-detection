@@ -7,3 +7,10 @@ __pycache__/
 env/
 venv/
 ENV/
+# Data & outputs (not committed)
+data/raw/*.csv
+data/raw/*.zip
+data/raw/*.gz
+artifacts/*.joblib
+artifacts/*.json
+artifacts/*.csv
