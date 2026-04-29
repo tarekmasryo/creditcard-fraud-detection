@@ -1,67 +1,92 @@
-# Case Study — Credit Card Fraud Detection (Cost-Aware Pipeline)
+# Case Study — Practical Fraud Modeling and Threshold Tuning
 
 ## Overview
-This repository implements a fraud detection workflow that is designed for **decision-making**, not just model accuracy.
-It produces **calibrated probabilities** and exports **threshold policies** so teams can control the trade-off between
-blocking legitimate transactions and missing fraud.
 
-## The real problem
-Fraud detection is asymmetric-risk classification:
-- **False positives** (legitimate transactions flagged) create customer friction and operational review cost.
-- **False negatives** (fraud missed) create direct financial loss and abuse risk.
+This repository implements a practical fraud detection workflow focused on decision-making, not just model accuracy.
 
-A model is useful only if its scores can be turned into a consistent policy.
+The notebook trains baseline and tree-based models, calibrates probability scores, tunes thresholds on validation data, and reports final operating points on a held-out test window.
 
-## Goals (definition of done)
-**Functional goals**
-- Train strong baselines for highly imbalanced data.
-- Produce reliable probability estimates (calibration).
-- Select explicit operating thresholds for deployment decisions.
+The goal is to make the fraud decision trade-off explicit: catching more fraud while keeping false-positive alert volume manageable.
 
-**Engineering goals**
-- Leak-safe evaluation using time-aware splits.
-- Reproducible runs (set seed (random_state), deterministic preprocessing).
-- Export artifacts (models + thresholds) for reuse.
+## Problem
+
+Credit card fraud detection is a highly imbalanced classification problem.
+
+False positives can create customer friction and manual review cost. False negatives can create direct financial loss. A useful model therefore needs more than a high global metric; it needs calibrated scores and threshold policies that can be inspected and adjusted.
+
+## Goals
+
+- Build a leakage-aware fraud modeling workflow.
+- Use time-ordered train, validation, and test windows.
+- Compare Logistic Regression, Random Forest, and XGBoost.
+- Use AUPRC as the primary metric for imbalanced fraud detection.
+- Calibrate probability scores for threshold-based decisions.
+- Select operating thresholds on validation data only.
+- Report final performance on a held-out test window.
+- Export optional artifacts for lightweight reuse.
 
 ## Approach
-### 1) Leak-safe evaluation (time-aware)
-Random splits can leak temporal patterns in transaction data.
-This workflow evaluates using **time-based windows** to better reflect real deployment conditions.
 
-### 2) Models suited for sparse fraud signals
-The notebook compares baselines and stronger models (e.g., RF/XGB) with imbalance-aware training choices.
+### 1. Data health and focused EDA
 
-### 3) Calibrated probabilities
-Raw model scores are not automatically usable as probabilities.
-Calibration makes the score interpretable for threshold selection and policy design.
+The notebook checks the dataset shape, duplicate rows, target distribution, amount behavior, and time-derived proxy patterns.
 
-### 4) Threshold policies (decision layer)
-Instead of defaulting to 0.5, the workflow exports thresholds such as:
-- a **minimum expected cost** threshold (based on FP vs FN costs)
-- a conservative high-precision threshold (when review capacity is limited)
+The `Time` feature is treated as a relative seconds-from-start field, not a real calendar timestamp. Any hour or day-part features are proxy features derived from that relative field.
 
-This makes operating trade-offs explicit and repeatable.
+### 2. Time-aware evaluation
+
+The workflow uses time-ordered train, validation, and test windows to reduce look-ahead leakage.
+
+Thresholds are selected using validation data and then evaluated on the held-out test window. This keeps the final test report separate from model and threshold selection.
+
+### 3. Models
+
+The notebook compares:
+
+- Logistic Regression
+- Random Forest
+- XGBoost
+
+It also includes a lightweight resampling diagnostic using Logistic Regression. That section is used as a baseline diagnostic only. The final recommendation is based on calibrated RF/XGB models, validation-selected thresholds, and operational trade-offs.
+
+### 4. Calibration
+
+Raw model scores are not automatically reliable probabilities. The workflow uses probability calibration to make threshold-based decisions more interpretable.
+
+Calibration is evaluated with Brier Score and ECE alongside ranking metrics such as AUPRC.
+
+### 5. Threshold decisions
+
+The notebook evaluates two operating styles:
+
+- Precision-first thresholding for low alert burden.
+- Simple cost-aware thresholding using illustrative FP/FN costs.
+
+The cost values are examples only. In a real setting, they should be replaced with business-specific investigation and fraud-loss assumptions.
 
 ## Outputs
-The notebook can export:
-- trained pipelines (base + calibrated)
-- `thresholds.json` (thresholds + cost assumptions)
 
-Artifacts are saved under `./artifacts/`.
+When artifact saving is enabled in the notebook, generated files may include:
 
-## Usage
-Setup and execution steps are documented in `README.md`.
+- `xgb_pipe.joblib`
+- `xgb_calibrated.joblib`
+- `rf_pipe.joblib`
+- `rf_calibrated.joblib`
+- `thresholds.json`
 
-Minimal flow:
-- Run the notebook to train and export artifacts.
-- Score a CSV with `scripts/score_csv.py` using a chosen model and policy.
+Artifacts are written to the configured artifacts directory and are not committed by default.
 
-## Limitations
-- The dataset uses anonymized PCA features; real production features and drift patterns differ.
-- Cost values (FP/FN) are illustrative; real policies should be derived from business constraints.
-- Production deployments should include monitoring, access controls, and incident response playbooks.
+## Key limitations
+
+- `Time` is relative seconds-from-start, not a real timestamp.
+- `V1` to `V28` are anonymized PCA-transformed features and are not directly interpretable.
+- Cost assumptions are illustrative.
+- Thresholds and calibration should be revalidated under data drift.
+- This repository is an analytical modeling workflow, not a complete production fraud monitoring system.
 
 ## Next steps
-- Add a release gate: minimum recall on critical slices + maximum review load.
-- Track stability over time (weekly baselines, drift alerts).
-- Add a small monitoring notebook for threshold performance (precision/recall vs volume).
+
+- Add sensitivity analysis for different FP/FN cost assumptions.
+- Track threshold stability over time.
+- Add model drift and calibration drift checks.
+- Package the scoring path as a small API or batch job if needed.

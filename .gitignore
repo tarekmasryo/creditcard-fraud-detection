@@ -24,3 +24,5 @@ artifacts/*.csv
 Thumbs.db
 .vscode/
 .idea/
+
+data/raw/creditcard.csv

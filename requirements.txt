@@ -2,8 +2,8 @@ numpy
 pandas
 matplotlib
 seaborn
-scikit-learn
-imbalanced-learn
-xgboost
+scikit-learn==1.4.2
+imbalanced-learn==0.12.3
+xgboost==2.1.1
 joblib
 ipython
